@@ -9,11 +9,11 @@ Hệ thống giám sát nhiệt độ, độ ẩm và nồng độ khói trong x
 
 | STT | Họ tên | MSSV |
 | --- | --- | --- |
-| 1 | ... | ... |
-| 2 | ... | ... |
-| 3 | ... | ... |
-| 4 | ... | ... |
-| 5 | ... | ... |
+| 1 | Nguyễn Đức Huy | DPM235424 |
+| 2 | Trần Thị Phương Dung | DPM235506 |
+| 3 | Trần Minh Trường | DPM235492 |
+| 4 | Nguyễn Văn Thắng | DPM235479 |
+| 5 | Trần Lê Hữu Lý | DPM2354.. |
 
 ## Kiến trúc
 
@@ -79,10 +79,10 @@ Thứ tự ưu tiên (Project 4 xét từ trên xuống): **TEST** → **FIRE** 
 
 ## Liên kết dự án Wokwi
 
-- Project 1: <dán link>
-- Project 2: <dán link>
-- Project 3: <dán link>
-- Project 4: <dán link>
+1. https://wokwi.com/projects/479368357505619969
+2  https://wokwi.com/projects/479375586103733249
+3. https://wokwi.com/projects/479199168404022273
+4. https://wokwi.com/projects/479542285793019905
 
 ## Hạn chế
 
