@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "author": "IoT Project Group",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -57.6, "left": 100.84, "attrs": {} },
+    { "type": "wokwi-breadboard-half", "id": "bb1", "top": -50, "left": 300, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": -30.8, "left": 681.6, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -118.6,
+      "left": 364.8,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": -128.4,
+      "left": 435.8,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": -128.4,
+      "left": 474.2,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_btn",
+      "top": 13.55,
+      "left": 364.8,
+      "attrs": { "value": "10000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_led_r",
+      "top": 51.4,
+      "left": 431.15,
+      "rotate": 270,
+      "attrs": { "value": "330" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_led_g",
+      "top": 51.4,
+      "left": 469.55,
+      "rotate": 270,
+      "attrs": { "value": "330" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "text1",
+      "top": -124.8,
+      "left": 240,
+      "attrs": { "text": "Công tắt \nđóng/mở cửa\n" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "text2",
+      "top": -211.2,
+      "left": 441.6,
+      "attrs": { "text": "LED đỏ : Trạng thái báo động\n" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "text3",
+      "top": -182.4,
+      "left": 441.6,
+      "attrs": { "text": "LED xanh : Trạng thái báo động\n" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "text4",
+      "top": 19.2,
+      "left": 864,
+      "attrs": { "text": "Cửa ra vào\n" }
+    }
+  ],
+  "connections": [
+    [ "btn1:1.l", "bb1:tp.3", "red", [ "h0" ] ],
+    [ "btn1:2.l", "bb1:5t.a", "green", [ "h0" ] ],
+    [ "bb1:tn.9", "bb1:11t.a", "black", [ "v0" ] ],
+    [ "esp:4", "bb1:5b.g", "green", [ "h0" ] ],
+    [ "bb1:5b.f", "bb1:5t.e", "green", [ "v0" ] ],
+    [ "servo1:GND", "bb1:tn.25", "black", [ "h-19.2", "v-48" ] ],
+    [ "servo1:V+", "bb1:tp.24", "red", [ "h-28.8", "v-47.9", "h-57.6" ] ],
+    [ "r_led_r:2", "bb1:15t.d", "green", [ "h0" ] ],
+    [ "led_red:A", "bb1:15t.a", "red", [ "v0" ] ],
+    [ "led_red:C", "bb1:tn.11", "black", [ "v0" ] ],
+    [ "r_led_g:2", "bb1:19t.d", "green", [ "h0" ] ],
+    [ "led_green:A", "bb1:19t.a", "green", [ "v0" ] ],
+    [ "led_green:C", "bb1:tn.15", "black", [ "v0" ] ],
+    [ "esp:GND.2", "bb1:tn.1", "black", [ "v0" ] ],
+    [ "esp:12", "bb1:15b.j", "red", [ "h28.95", "v96", "h326.4", "v-67.2", "h-0.4" ] ],
+    [ "esp:13", "bb1:19b.j", "green", [ "h19.35", "v86.4", "h374" ] ],
+    [ "esp:5V", "bb1:tp.1", "red", [ "h-9.45", "v-201.6", "h115.2", "v19.9" ] ],
+    [ "esp:18", "bb1:30b.i", "orange", [ "h-9.6", "v48" ] ],
+    [ "servo1:PWM", "bb1:30b.f", "orange", [ "h-38.4", "v-9.4" ] ],
+    [ "r_btn:1", "bb1:5t.c", "", [ "$bb" ] ],
+    [ "r_btn:2", "bb1:11t.c", "", [ "$bb" ] ],
+    [ "r_led_r:1", "bb1:15b.h", "", [ "$bb" ] ],
+    [ "r_led_g:1", "bb1:19b.h", "", [ "$bb" ] ]
+  ],
+  "dependencies": {}
+}
