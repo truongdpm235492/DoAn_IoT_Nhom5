@@ -13,7 +13,7 @@ Hệ thống giám sát nhiệt độ, độ ẩm và nồng độ khói trong x
 | 2 | Trần Thị Phương Dung | DPM235506 |
 | 3 | Trần Minh Trường | DPM235492 |
 | 4 | Nguyễn Văn Thắng | DPM235479 |
-| 5 | Trần Lê Hữu Lý | DPM2354.. |
+| 5 | Trần Lê Hữu Lý | DPM235447 |
 
 ## Kiến trúc
 
