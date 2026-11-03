@@ -1,0 +1,17 @@
+# Khóa bí mật: KHÔNG commit (WiFi, AIO Key, token Telegram)
+config.py
+**/config.py
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Hệ điều hành / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Tệp tạm của Word
+~$*.docx
