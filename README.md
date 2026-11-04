@@ -80,7 +80,7 @@ Thứ tự ưu tiên (Project 4 xét từ trên xuống): **TEST** → **FIRE** 
 ## Liên kết dự án Wokwi
 
 1. https://wokwi.com/projects/479368357505619969
-2. https://wokwi.com/projects/479375586103733249
+2. https://wokwi.com/projects/479732034879361025
 3. https://wokwi.com/projects/479199168404022273
 4. https://wokwi.com/projects/479542285793019905
 
