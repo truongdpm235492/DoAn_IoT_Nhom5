@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Giám sát môi trường xưởng thực phẩm</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#e2e8f0;--mut:#94a3b8;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#38bdf8}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--txt)}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0}
+.wrap{max-width:1200px;margin:0 auto;padding:16px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h2{margin:0 0 12px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+#banner{border-radius:12px;padding:20px;text-align:center;font-size:26px;font-weight:700;transition:.3s}
+#banner small{display:block;font-size:14px;font-weight:400;margin-top:6px;opacity:.9}
+.safe{background:rgba(34,197,94,.15);border:2px solid var(--ok);color:var(--ok)}
+.smoke{background:rgba(245,158,11,.15);border:2px solid var(--warn);color:var(--warn)}
+.fire{background:rgba(239,68,68,.2);border:2px solid var(--bad);color:var(--bad);animation:blink 1s infinite}
+.off{background:var(--card);border:2px dashed var(--line);color:var(--mut)}
+@keyframes blink{50%{background:rgba(239,68,68,.45)}}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.val{font-size:40px;font-weight:700}
+.unit{font-size:16px;color:var(--mut);margin-left:4px}
+.bar{height:8px;background:var(--line);border-radius:6px;margin-top:10px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--ok);transition:.4s}
+.thr{font-size:12px;color:var(--mut);margin-top:6px}
+.devs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.dev{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.dev .ic{font-size:28px}
+.dev .st{margin-top:4px;font-weight:700;color:var(--mut)}
+.dev.on{border-color:var(--ok)}.dev.on .st{color:var(--ok)}
+.dev.on.alert{border-color:var(--bad)}.dev.on.alert .st{color:var(--bad)}
+button{background:var(--acc);color:#04202e;border:0;border-radius:8px;padding:10px 16px;font-weight:700;cursor:pointer;font-size:14px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.cmdmsg{margin-top:10px;font-size:13px;min-height:18px;font-weight:600}
+button.red{background:var(--bad);color:#fff}button.gray{background:var(--line);color:var(--txt)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+canvas{width:100%;height:180px;display:block}
+#log{max-height:220px;overflow:auto;font-size:13px;font-family:ui-monospace,Consolas,monospace}
+#log div{padding:4px 0;border-bottom:1px solid var(--line)}
+.t-ok{color:var(--ok)}.t-warn{color:var(--warn)}.t-bad{color:var(--bad)}
+.cfg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label{font-size:12px;color:var(--mut);display:block;margin-bottom:3px}
+input[type=text],input[type=password],input[type=number]{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:8px;font-size:13px}
+.conn{font-size:13px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:6px}
+.dot.ok{background:var(--ok)}
+details summary{cursor:pointer;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+.stale{color:var(--bad);font-weight:700}
+.tblwrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏭 Giám sát môi trường xưởng sản xuất thực phẩm</h1>
+  <div class="conn"><span class="dot" id="dot"></span><span id="connTxt">Chưa kết nối</span> · <span id="lastUp">--</span> · <span id="sensorAge">Cảm biến: --</span></div>
+</header>
+
+<div class="wrap">
+  <div id="banner" class="off">Chưa có dữ liệu<small>Nhập thông tin Adafruit IO ở phần Cấu hình bên dưới</small></div>
+
+  <div class="grid3">
+    <div class="card"><h2>🌡️ Nhiệt độ</h2><div><span class="val" id="vTemp">--</span><span class="unit">°C</span></div>
+      <div class="bar"><i id="bTemp"></i></div><div class="thr">Ngưỡng cảnh báo: <span id="thTemp"></span> °C</div></div>
+    <div class="card"><h2>💧 Độ ẩm</h2><div><span class="val" id="vHum">--</span><span class="unit">%</span></div>
+      <div class="bar"><i id="bHum"></i></div><div class="thr">Độ ẩm tương đối</div></div>
+    <div class="card"><h2>💨 Khói / khí gas</h2><div><span class="val" id="vSmoke">--</span><span class="unit">%</span></div>
+      <div class="bar"><i id="bSmoke"></i></div><div class="thr">Ngưỡng cảnh báo: <span id="thSmoke"></span> %</div></div>
+  </div>
+
+  <div class="card"><h2>Trạng thái thiết bị (suy ra từ trạng thái hệ thống do Project 4 quyết định)</h2>
+    <div class="devs">
+      <div class="dev" id="dFan"><div class="ic">🌀</div>Quạt hút<div class="st">--</div></div>
+      <div class="dev" id="dVent"><div class="ic">🪟</div>Cửa thông gió<div class="st">--</div></div>
+      <div class="dev" id="dDoor"><div class="ic">🚪</div>Cửa ra vào<div class="st">--</div></div>
+      <div class="dev" id="dPump"><div class="ic">🚿</div>Bơm chữa cháy<div class="st">--</div></div>
+      <div class="dev" id="dAlarm"><div class="ic">🚨</div>Còi báo động<div class="st">--</div></div>
+    </div>
+  </div>
+
+  <div class="card"><h2>Điều khiển từ xa (gửi lệnh tới Control Room – Project 4)</h2>
+    <div class="row">
+      <button id="btnVent">🪟 Mở cửa thông gió</button>
+      <button id="btnVentOff" class="gray">Đóng cửa thông gió</button>
+      <button id="btnTest" class="red">🚨 Test cảnh báo (bật tất cả)</button>
+      <button id="btnTestOff" class="gray">Tắt test</button>
+    </div>
+    <div id="cmdMsg" class="cmdmsg"></div>
+    <div class="thr" style="margin-top:8px">Lệnh đi qua feed <b>vent-cmd</b> / <b>test-cmd</b>; Project 4 gộp với công tắc vật lý rồi điều khiển các thiết bị. Telegram do Project 4 tự gửi.</div>
+  </div>
+
+  <div class="grid3" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+    <div class="card"><h2>Lịch sử nhiệt độ (°C)</h2><canvas id="cTemp"></canvas></div>
+    <div class="card"><h2>Lịch sử độ ẩm (%)</h2><canvas id="cHum"></canvas></div>
+    <div class="card"><h2>Lịch sử khói (%)</h2><canvas id="cSmoke"></canvas></div>
+  </div>
+
+  <div class="card"><h2>Bảng logic 4 kịch bản</h2><div class="tblwrap">
+    <table>
+      <tr><th>Kịch bản</th><th>Khói</th><th>Nhiệt</th><th>Quạt hút</th><th>Cửa gió</th><th>Cửa ra vào</th><th>Bơm</th><th>Còi</th><th>Thông báo</th></tr>
+      <tr><td>1. An toàn</td><td>Thường</td><td>Thường</td><td>Tắt</td><td>Đóng</td><td>Đóng</td><td>Tắt</td><td>Tắt</td><td>—</td></tr>
+      <tr><td>2. Khói bất thường</td><td>Vượt</td><td>Thường</td><td>Bật</td><td>Mở</td><td>Mở</td><td>Tắt</td><td>Bật</td><td>Khói nhiều bất thường</td></tr>
+      <tr><td>3. Hỏa hoạn</td><td>Vượt</td><td>Vượt</td><td>Bật</td><td>Mở</td><td>Mở</td><td>Bật</td><td>Bật</td><td>Cảnh báo hỏa hoạn</td></tr>
+      <tr><td>5. Nhiệt độ cao (khói thường)</td><td>Thường</td><td>Vượt</td><td>Bật</td><td>Mở</td><td>Mở</td><td>Tắt</td><td>Tắt</td><td>Nhiệt độ cao bất thường</td></tr>
+      <tr><td>4a. Nút cửa gió</td><td colspan="2">—</td><td>Tắt</td><td>Mở</td><td>Đóng</td><td>Tắt</td><td>Tắt</td><td>—</td></tr>
+      <tr><td>4b. Nút test</td><td colspan="2">—</td><td>Bật</td><td>Mở</td><td>Mở</td><td>Bật</td><td>Bật</td><td>Test (không phải cháy thật)</td></tr>
+    </table></div>
+    <div class="thr">Thoát cảnh báo có độ trễ: khói phải xuống dưới 50% và nhiệt dưới 43°C để tránh chớp tắt liên tục.</div>
+  </div>
+
+  <div class="card"><h2>Nhật ký sự kiện</h2><div id="log"></div></div>
+
+  <div class="card">
+    <details id="cfgBox"><summary>⚙️ Cấu hình (Adafruit IO, tên feed, ngưỡng)</summary>
+      <div class="cfg" style="margin-top:12px">
+        <div><label>Adafruit IO Username</label><input type="text" id="aioUser" value="ndhuy412"></div>
+        <div><label>Adafruit IO Key</label><input type="password" id="aioKey"></div>
+        <div><label>Feed nhiệt độ</label><input type="text" id="fTemp" value="doannhom.temp"></div>
+        <div><label>Feed độ ẩm</label><input type="text" id="fHum" value="doannhom.humidity"></div>
+        <div><label>Feed khói</label><input type="text" id="fSmoke" value="doannhom.smoke"></div>
+        <div><label>Feed trạng thái (P4 gửi: SAFE/SMOKE/FIRE/TEST)</label><input type="text" id="fStatus" value="doannhom.emergency_status"></div>
+        <div><label>Feed cửa thông gió thủ công</label><input type="text" id="fManual" value="doannhom.manual-vent"></div>
+        <div><label>Feed lệnh cửa gió (web → P4)</label><input type="text" id="fVentCmd" value="doannhom.vent-cmd"></div>
+        <div><label>Feed lệnh test (web → P4)</label><input type="text" id="fTestCmd" value="doannhom.test-cmd"></div>
+        <div><label>Ngưỡng nhiệt (°C)</label><input type="number" id="thT" value="45"></div>
+        <div><label>Ngưỡng khói (%)</label><input type="number" id="thS" value="60"></div>
+        <div><label>Chu kỳ cập nhật (giây, ≥5)</label><input type="number" id="poll" value="5"></div>
+        <div><label>Âm thanh + thông báo trình duyệt khi có cảnh báo</label><input type="checkbox" id="sound" checked></div>
+      </div>
+      <div class="row" style="margin-top:12px"><button id="btnSave">💾 Lưu & kết nối</button>
+        <span class="thr">Cấu hình lưu trong trình duyệt của bạn (localStorage). Adafruit IO free giới hạn 30 request/phút.</span></div>
+    </details>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const IDS=['aioUser','aioKey','fTemp','fHum','fSmoke','fStatus','fManual','fVentCmd','fTestCmd','thT','thS','poll'];
+const store={get(){try{return JSON.parse(localStorage.getItem('iotcfg2')||'{}')}catch(e){return{}}},set(o){try{localStorage.setItem('iotcfg2',JSON.stringify(o))}catch(e){}}};
+let cfg={},timer=null,lastStatus=null,idx={},state={};
+
+function loadCfg(){const s=store.get();IDS.forEach(i=>{if(s[i]!==undefined)$(i).value=s[i]});if(s.sound!==undefined)$('sound').checked=s.sound;readCfg()}
+function readCfg(){IDS.forEach(i=>cfg[i]=$(i).value.trim());cfg.sound=$('sound').checked;$('thTemp').textContent=cfg.thT;$('thSmoke').textContent=cfg.thS}
+function log(msg,cls=''){const d=document.createElement('div');d.className=cls;d.textContent=new Date().toLocaleTimeString('vi-VN')+'  '+msg;$('log').prepend(d);while($('log').children.length>100)$('log').lastChild.remove()}
+
+const api=(path,opt={})=>fetch(`https://io.adafruit.com/api/v2/${cfg.aioUser}${path}`,{...opt,headers:{'X-AIO-Key':cfg.aioKey,'Content-Type':'application/json'}}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
+
+// Tra cứu feed linh hoạt: không phân biệt hoa/thường, "_" và "-" coi như nhau, có/không tiền tố group
+const norm=s=>String(s).toLowerCase().replace(/_/g,'-');
+const find=k=>idx[norm(k)]||idx[norm(String(k).split('.').pop())];
+const val=k=>{const f=find(k);return f?f.last_value:undefined};
+const truthy=v=>['1','on','true','open','mo','bat'].includes(String(v).toLowerCase());
+
+async function refresh(){
+  try{
+    const feeds=await api('/feeds');
+    idx={};
+    feeds.forEach(f=>{
+      idx[norm(f.key)]=f;
+      const g=f.group&&f.group.key;
+      if(g){idx[norm(g+'.'+f.key)]=f;idx[norm(g+'.'+f.name)]=f}
+    });
+    feeds.forEach(f=>{const n=norm(f.name);if(!idx[n])idx[n]=f});
+    const ft=find(cfg.fTemp);
+    state={temp:parseFloat(val(cfg.fTemp)),hum:parseFloat(val(cfg.fHum)),smoke:parseFloat(val(cfg.fSmoke)),
+      manual:truthy(val(cfg.fManual)),raw:String(val(cfg.fStatus)||'').toUpperCase(),
+      age:ft&&ft.updated_at?(Date.now()-new Date(ft.updated_at).getTime())/1000:null};
+    $('dot').className='dot ok';$('connTxt').textContent='Đã kết nối Adafruit IO';
+    $('lastUp').textContent='Cập nhật '+new Date().toLocaleTimeString('vi-VN');
+    render();feedCheck();
+  }catch(e){$('dot').className='dot';$('connTxt').textContent='Lỗi kết nối: '+e.message;}
+}
+
+function setDev(id,on,alert,onTxt,offTxt){const e=$(id);e.className='dev'+(on?' on':'')+(on&&alert?' alert':'');e.querySelector('.st').textContent=on?onTxt:offTxt}
+function setBar(id,v,max,over){const b=$(id);b.style.width=Math.max(0,Math.min(100,(v||0)/max*100))+'%';b.style.background=over?'var(--bad)':'var(--ok)'}
+
+function resolveStatus(){
+  const r=state.raw,tT=+cfg.thT,tS=+cfg.thS;
+  if(['FIRE','ON','1','TRUE'].includes(r))return 'FIRE';
+  if(r==='TEST')return 'TEST';
+  if(r==='SMOKE')return 'SMOKE';
+  if(r==='HOT')return 'HOT';
+  if(r==='SAFE'||r==='OFF')return state.manual?'VENT':'SAFE';
+  // chưa có feed trạng thái -> tự tính theo ngưỡng
+  const sh=state.smoke>=tS,th=state.temp>=tT;
+  return sh&&th?'FIRE':sh?'SMOKE':th?'HOT':state.manual?'VENT':'SAFE';
+}
+
+const BANNER={
+  SAFE:['safe','✅ AN TOÀN','Khói và nhiệt độ bình thường – tất cả thiết bị tắt'],
+  HOT:['smoke','🌡️ NHIỆT ĐỘ CAO BẤT THƯỜNG','Khói vẫn bình thường. Đang bật quạt hút + cửa thông gió + cửa ra vào'],
+  SMOKE:['smoke','⚠️ KHÓI NHIỀU BẤT THƯỜNG','Nhiệt độ vẫn bình thường. Đang bật quạt hút + cửa thông gió + cửa ra vào + còi'],
+  FIRE:['fire','🔥 CẢNH BÁO HỎA HOẠN','Khói và nhiệt độ cùng vượt ngưỡng – bật toàn bộ thiết bị (kể cả bơm nước)'],
+  TEST:['fire','🧪 CHẾ ĐỘ TEST CẢNH BÁO','Đang bật tất cả thiết bị để kiểm tra – không phải hỏa hoạn thật'],
+  VENT:['smoke','🪟 ĐANG MỞ CỬA THÔNG GIÓ (thủ công)','Chỉ cửa thông gió được mở']
+};
+
+function render(){
+  const s=state,tT=+cfg.thT,tS=+cfg.thS;
+  $('vTemp').textContent=isNaN(s.temp)?'--':s.temp.toFixed(1);
+  $('vHum').textContent=isNaN(s.hum)?'--':s.hum.toFixed(0);
+  $('vSmoke').textContent=isNaN(s.smoke)?'--':s.smoke.toFixed(1);
+  setBar('bTemp',s.temp,80,s.temp>=tT);setBar('bHum',s.hum,100,false);setBar('bSmoke',s.smoke,100,s.smoke>=tS);
+  const st0=resolveStatus(),emg=['HOT','SMOKE','FIRE','TEST'].includes(st0);
+  setDev('dFan',emg,false,'BẬT','TẮT');setDev('dVent',emg||s.manual,false,'MỞ','ĐÓNG');setDev('dDoor',emg,false,'MỞ','ĐÓNG');
+  setDev('dPump',['FIRE','TEST'].includes(st0),false,'BẬT','TẮT');setDev('dAlarm',['SMOKE','FIRE','TEST'].includes(st0),true,'BẬT','TẮT');
+
+  const ag=$('sensorAge');
+  if(s.age==null){ag.textContent='Cảm biến: --';ag.className=''}
+  else if(s.age>120){ag.textContent='⚠ Mất dữ liệu cảm biến ('+Math.round(s.age)+'s)';ag.className='stale'}
+  else{ag.textContent='Cảm biến: '+Math.round(s.age)+'s trước';ag.className=''}
+
+  const st=resolveStatus(),M=BANNER[st],b=$('banner');
+  b.className=M[0];b.innerHTML=M[1]+'<small>'+M[2]+'</small>';
+
+  if(st!==lastStatus){
+    if(lastStatus!==null){
+      log(`Trạng thái: ${lastStatus} → ${st}`,{SAFE:'t-ok',HOT:'t-warn',SMOKE:'t-warn',VENT:'t-warn',FIRE:'t-bad',TEST:'t-bad'}[st]);
+      webAlert(st);
+    }else log('Trạng thái hiện tại: '+st);
+    lastStatus=st;
+  }
+}
+
+// ---- Cảnh báo kênh Web: âm thanh + thông báo trình duyệt ----
+let actx=null;
+function beep(n,freq){
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();let t=actx.currentTime;
+    for(let i=0;i<n;i++){const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=freq;o.connect(g);g.connect(actx.destination);
+      g.gain.setValueAtTime(.15,t+i*.3);g.gain.setValueAtTime(0,t+i*.3+.2);o.start(t+i*.3);o.stop(t+i*.3+.25)}}catch(e){}
+}
+function webAlert(st){
+  if(!cfg.sound||st==='SAFE'||st==='VENT')return;
+  if(st==='SMOKE')beep(2,660);else if(st==='HOT')beep(2,520);else beep(5,1000);
+  try{if('Notification' in window&&Notification.permission==='granted')
+    new Notification(BANNER[st][1],{body:BANNER[st][2]});}catch(e){}
+}
+
+// ---- Gửi lệnh điều khiển (web -> Adafruit IO -> Project 4) ----
+const CMD_BTNS=['btnVent','btnVentOff','btnTest','btnTestOff'];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let cmdBusy=false;
+function cmdMsg(txt,cls=''){const e=$('cmdMsg');delete e.dataset.w;e.textContent=txt;e.className='cmdmsg '+cls}
+function lockBtns(ms){CMD_BTNS.forEach(i=>$(i).disabled=true);setTimeout(()=>CMD_BTNS.forEach(i=>$(i).disabled=false),ms)}
+
+// Cảnh báo sớm nếu feed lệnh chưa tồn tại (REST không tự tạo feed, chỉ MQTT của Project 4 mới tạo)
+function feedCheck(){
+  const e=$('cmdMsg');if(cmdBusy)return;
+  const miss=[cfg.fVentCmd,cfg.fTestCmd].filter(k=>k&&!find(k));
+  if(miss.length){cmdMsg('⚠ Chưa thấy feed: '+miss.join(', ')+' – hãy chạy Project 4 trên Wokwi để nó tự tạo, hoặc kiểm tra lại tên feed trong ⚙️ Cấu hình.','t-warn');e.dataset.w='1'}
+  else if(e.dataset.w){cmdMsg('')}
+}
+
+// Thử lần lượt: key thật của feed -> tên cấu hình -> endpoint theo group
+async function postFeed(feed,v){
+  const f=find(feed),tries=[];
+  if(f)tries.push(`/feeds/${encodeURIComponent(f.key)}/data`);
+  tries.push(`/feeds/${encodeURIComponent(feed)}/data`);
+  if(String(feed).includes('.')){const p=String(feed).split('.');tries.push(`/groups/${encodeURIComponent(p[0])}/feeds/${encodeURIComponent(p.slice(1).join('.'))}/data`)}
+  let last;
+  for(const p of [...new Set(tries)]){
+    try{return await api(p,{method:'POST',body:JSON.stringify({value:v})})}
+    catch(e){last=e;if(!String(e.message).includes('404'))throw e}
+  }
+  throw last;
+}
+
+async function sendCmd(feedKey,v,label,verify){
+  if(cmdBusy)return;
+  readCfg();                       // lấy giá trị đang gõ trong ô cấu hình, kể cả khi chưa bấm "Lưu"
+  const feed=cfg[feedKey];
+  if(!cfg.aioUser||!cfg.aioKey){
+    cmdMsg('⚠ Chưa nhập Adafruit IO Key – nhập ở mục ⚙️ Cấu hình bên dưới rồi bấm "Lưu & kết nối".','t-warn');
+    log('Chưa cấu hình Adafruit IO','t-warn');$('cfgBox').open=true;return}
+  cmdBusy=true;lockBtns(5000);
+  cmdMsg('⏳ Đang gửi lệnh: '+label+' ...');
+  try{
+    if(!Object.keys(idx).length)await refresh();
+    await postFeed(feed,v);
+    log('Đã gửi lệnh: '+label,'t-ok');
+    cmdMsg('✓ Đã gửi "'+label+'" lên Adafruit IO – đang chờ Project 4 xác nhận ...','t-ok');
+    await sleep(4000);await refresh();
+    const ok=verify?verify():true;
+    cmdMsg(ok?'✓ Project 4 đã nhận lệnh: '+label
+             :'⚠ Đã gửi lệnh nhưng chưa thấy Project 4 phản hồi. Kiểm tra Project 4 trên Wokwi đang chạy và báo "Đã kết nối Adafruit IO" (nếu dùng công tắc vật lý thì nó có thể đang ghi đè lệnh web).',
+        ok?'t-ok':'t-warn');
+  }catch(e){
+    const m=String(e.message);let hint;
+    if(/401|403/.test(m))hint='Sai Username hoặc Key Adafruit IO.';
+    else if(m.includes('404'))hint='Feed "'+feed+'" chưa tồn tại hoặc sai tên – chạy Project 4 trước để nó tự tạo feed, hoặc sửa tên feed trong Cấu hình.';
+    else if(m.includes('429'))hint='Vượt giới hạn 30 điểm dữ liệu/phút của Adafruit IO (4 project dùng chung) – chờ khoảng 1 phút rồi bấm lại.';
+    else if(e.name==='TypeError')hint='Không gọi được Adafruit IO (mất mạng, bị extension/adblock chặn, hoặc đang mở trong môi trường chặn kết nối ngoài).';
+    else hint=m;
+    cmdMsg('✗ Gửi lệnh lỗi: '+hint,'t-bad');log('Gửi lệnh lỗi ('+label+'): '+m,'t-bad');
+  }finally{cmdBusy=false}
+}
+
+// ---- Biểu đồ lịch sử ----
+async function history(){
+  const defs=[['cTemp',cfg.fTemp,'#f97316',+cfg.thT],['cHum',cfg.fHum,'#38bdf8',null],['cSmoke',cfg.fSmoke,'#a78bfa',+cfg.thS]];
+  for(const [cv,feed,col,th] of defs){
+    const f=find(feed);if(!f)continue;
+    try{const d=await api(`/feeds/${f.key}/data?limit=60`);draw($(cv),d.reverse().map(x=>+x.value),col,th)}catch(e){}
+  }
+}
+function draw(c,data,col,th){
+  const dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*dpr;c.height=h*dpr;
+  const g=c.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,w,h);
+  if(data.length<2)return;
+  let mn=Math.min(...data),mx=Math.max(...data);if(th!=null){mn=Math.min(mn,th);mx=Math.max(mx,th)}
+  if(mx===mn){mx+=1;mn-=1}const pad=(mx-mn)*.1;mn-=pad;mx+=pad;
+  const X=i=>30+i*(w-36)/(data.length-1),Y=v=>h-18-(v-mn)/(mx-mn)*(h-28);
+  g.strokeStyle='#334155';g.fillStyle='#94a3b8';g.font='11px sans-serif';g.lineWidth=1;
+  for(let k=0;k<=3;k++){const v=mn+(mx-mn)*k/3,y=Y(v);g.beginPath();g.moveTo(30,y);g.lineTo(w-6,y);g.stroke();g.fillText(v.toFixed(0),2,y+4)}
+  if(th!=null){g.strokeStyle='#ef4444';g.setLineDash([5,4]);g.beginPath();g.moveTo(30,Y(th));g.lineTo(w-6,Y(th));g.stroke();g.setLineDash([])}
+  g.strokeStyle=col;g.lineWidth=2;g.beginPath();data.forEach((v,i)=>i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v)));g.stroke();
+}
+
+function start(){
+  clearInterval(timer);
+  if(!cfg.aioUser||!cfg.aioKey){$('cfgBox').open=true;return}
+  refresh().then(history);
+  const sec=Math.max(5,+cfg.poll||5);
+  let n=0;timer=setInterval(()=>{refresh();if(++n%Math.ceil(30/sec)===0)history()},sec*1000);
+}
+
+$('btnSave').onclick=()=>{readCfg();store.set(cfg);log('Đã lưu cấu hình','t-ok');lastStatus=null;
+  try{if(cfg.sound&&'Notification' in window&&Notification.permission==='default')Notification.requestPermission()}catch(e){}
+  start()};
+$('btnVent').onclick=()=>sendCmd('fVentCmd','ON','MỞ cửa thông gió',()=>state.manual===true);
+$('btnVentOff').onclick=()=>sendCmd('fVentCmd','OFF','ĐÓNG cửa thông gió',()=>state.manual===false);
+$('btnTest').onclick=()=>sendCmd('fTestCmd','ON','BẬT test cảnh báo',()=>state.raw==='TEST');
+$('btnTestOff').onclick=()=>sendCmd('fTestCmd','OFF','TẮT test cảnh báo',()=>state.raw!=='TEST');
+window.addEventListener('resize',()=>{if(cfg.aioUser)history()});
+
+loadCfg();log('Dashboard sẵn sàng');start();
+</script>
+</body>
+</html>
