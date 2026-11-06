@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống An Ninh ESP32</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a; color: #f8fafc; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; background: #1e293b; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #38bdf8; font-size: 20px; margin-bottom: 20px; }
+        .status-card { background: #334155; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; transition: 0.3s; }
+        .label { font-size: 13px; color: #94a3b8; }
+        .val { font-size: 22px; font-weight: bold; margin-top: 5px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-arm { background-color: #ef4444; color: white; }
+        .btn-disarm { background-color: #22c55e; color: white; }
+        button:hover { opacity: 0.85; }
+        .conn-bar { text-align: center; font-size: 13px; padding: 8px; border-radius: 6px; margin-bottom: 15px; font-weight: bold; }
+        .online { background-color: #065f46; color: #34d399; }
+        .offline { background-color: #7f1d1d; color: #f87171; }
+        .alarm-card { background-color: #7f1d1d !important; border: 2px solid #ef4444; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.7; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>HỆ THỐNG AN NINH (ADAFRUIT IO)</h1>
+
+    <div class="conn-bar offline" id="connStatus">Đang kết nối Adafruit IO...</div>
+
+    <div class="status-card" id="modeCard">
+        <div class="label">TRẠNG THÁI BẢO VỆ</div>
+        <div class="val" id="modeVal" style="color: #22c55e;">DISARMED</div>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <div class="status-card" id="pirCard" style="flex: 1;">
+            <div class="label">CẢM BIẾN PIR</div>
+            <div class="val" id="pirVal" style="color: #38bdf8;">AN TOÀN</div>
+        </div>
+        <div class="status-card" id="distCard" style="flex: 1;">
+            <div class="label">KHOẢNG CÁCH</div>
+            <div class="val" id="distVal" style="color: #38bdf8;">-- cm</div>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-arm" onclick="sendCmd('ARM')">BẬT (ARM)</button>
+        <button class="btn-disarm" onclick="sendCmd('DISARM')">TẮT (DISARM)</button>
+    </div>
+</div>
+
+<script>
+    const USER = "pdung144";
+    const KEY  = "aio_HZot10zdsdveC95Vh70U4cQMzcqC";
+    const FEED = "security-system";
+
+    async function sendCmd(cmd) {
+        try {
+            await fetch(`https://io.adafruit.com/api/v2/${USER}/feeds/${FEED}/data`, {
+                method: 'POST',
+                headers: { 'X-AIO-Key': KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: cmd })
+            });
+            setTimeout(updateData, 500);
+        } catch(e) {
+            console.log("Lỗi gửi Adafruit IO:", e);
+        }
+    }
+
+    async function updateData() {
+        try {
+            let res = await fetch(`https://io.adafruit.com/api/v2/${USER}/feeds/${FEED}/data/last`, {
+                headers: { 'X-AIO-Key': KEY }
+            });
+            if (res.ok) {
+                let data = await res.json();
+                
+                document.getElementById('connStatus').innerText = "Đã kết nối Adafruit IO Cloud";
+                document.getElementById('connStatus').className = "conn-bar online";
+
+                let rawVal = data.value;
+
+                // Xử lý dữ liệu JSON
+                if (rawVal.startsWith('{')) {
+                    let payload = JSON.parse(rawVal);
+                    
+                    // Chế độ
+                    let modeElem = document.getElementById('modeVal');
+                    modeElem.innerText = payload.mode || "DISARMED";
+                    modeElem.style.color = payload.mode === "ARMED" ? "#ef4444" : "#22c55e";
+
+                    // PIR
+                    let pirCard = document.getElementById('pirCard');
+                    if (payload.pir == 1) {
+                        document.getElementById('pirVal').innerText = "CÓ CHUYỂN ĐỘNG";
+                        document.getElementById('pirVal').style.color = "#f87171";
+                        if (payload.mode === "ARMED") pirCard.classList.add('alarm-card');
+                    } else {
+                        document.getElementById('pirVal').innerText = "AN TOÀN";
+                        document.getElementById('pirVal').style.color = "#38bdf8";
+                        pirCard.classList.remove('alarm-card');
+                    }
+
+                    // Khoảng cách
+                    let distCard = document.getElementById('distCard');
+                    document.getElementById('distVal').innerText = payload.dist + " cm";
+                    if (payload.dist < 50.0) {
+                        document.getElementById('distVal').style.color = "#f87171";
+                        if (payload.mode === "ARMED") distCard.classList.add('alarm-card');
+                    } else {
+                        document.getElementById('distVal').style.color = "#38bdf8";
+                        distCard.classList.remove('alarm-card');
+                    }
+                } 
+                else if (rawVal === "ARM" || rawVal === "DISARM") {
+                    document.getElementById('modeVal').innerText = rawVal === "ARM" ? "ARMED" : "DISARMED";
+                    document.getElementById('modeVal').style.color = rawVal === "ARM" ? "#ef4444" : "#22c55e";
+                }
+            }
+        } catch(e) {
+            document.getElementById('connStatus').innerText = "Chờ dữ liệu từ Adafruit IO...";
+            document.getElementById('connStatus').className = "conn-bar offline";
+        }
+    }
+
+    setInterval(updateData, 2500);
+    updateData();
+</script>
+
+</body>
+</html>
