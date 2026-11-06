@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "author": "NGUYEN VAN THANG",
+  "editor": "wokwi",
+  "parts": [ { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -76.8, "left": -4.76, "attrs": {} } ],
+  "connections": [ [ "esp:TX", "$serialMonitor:RX", "", [] ], [ "esp:RX", "$serialMonitor:TX", "", [] ] ],
+  "serialMonitor": { "display": "always", "newline": "lf" },
+  "dependencies": {}
+}
