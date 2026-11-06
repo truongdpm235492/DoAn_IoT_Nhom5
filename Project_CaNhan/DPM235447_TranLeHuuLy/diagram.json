@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "author": "Node 1 - Sensor Node",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-breadboard-half", "id": "bb1", "top": -79.8, "left": 127.6, "attrs": {} },
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 144, "left": 321.64, "attrs": {} },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -143.7,
+      "left": 378.6,
+      "attrs": { "temperature": "49" }
+    },
+    { "type": "wokwi-potentiometer", "id": "pot1", "top": -97.3, "left": 153.4, "attrs": {} },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 61.85,
+      "left": 344.2,
+      "rotate": 180,
+      "attrs": { "value": "10000" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:GND.1", "bb1:bn.2", "black", [ "h0" ] ],
+    [ "bb1:bn.24", "bb1:29t.e", "black", [ "v0" ] ],
+    [ "esp:3V3", "bb1:26b.j", "red", [ "h0.15", "v-76.8", "h67.2" ] ],
+    [ "esp:3V3", "r1:2", "red", [ "h0.15", "v-76.8", "h19.2" ] ],
+    [ "r1:1", "bb1:27t.e", "red", [ "v0" ] ],
+    [ "bb1:26b.f", "bb1:26t.e", "red", [ "v0" ] ],
+    [ "bb1:26t.b", "dht1:VCC", "red", [ "v0" ] ],
+    [ "bb1:27t.b", "dht1:SDA", "red", [ "v0" ] ],
+    [ "bb1:28t.b", "dht1:NC", "green", [ "v0" ] ],
+    [ "bb1:29t.b", "dht1:GND", "black", [ "v0" ] ],
+    [ "bb1:bp.5", "bb1:6b.j", "red", [ "v0" ] ],
+    [ "bb1:6b.f", "bb1:6t.e", "green", [ "v0" ] ],
+    [ "bb1:4t.e", "bb1:4b.f", "green", [ "v0" ] ],
+    [ "bb1:4b.j", "bb1:bn.3", "green", [ "v0" ] ],
+    [ "esp:34", "bb1:5b.j", "green", [ "h0" ] ],
+    [ "bb1:5b.f", "bb1:5t.e", "green", [ "v0" ] ],
+    [ "bb1:28b.f", "bb1:28t.e", "green", [ "v0" ] ],
+    [ "esp:5V", "bb1:bp.1", "red", [ "h0" ] ],
+    [ "esp:15", "bb1:27b.j", "green", [ "v0" ] ],
+    [ "r1:1", "bb1:27b.i", "", [ "$bb" ] ],
+    [ "r1:2", "bb1:21b.i", "", [ "$bb" ] ],
+    [ "dht1:VCC", "bb1:26t.a", "", [ "$bb" ] ],
+    [ "dht1:SDA", "bb1:27t.a", "", [ "$bb" ] ],
+    [ "dht1:NC", "bb1:28t.a", "", [ "$bb" ] ],
+    [ "dht1:GND", "bb1:29t.a", "", [ "$bb" ] ],
+    [ "pot1:GND", "bb1:4t.a", "", [ "$bb" ] ],
+    [ "pot1:SIG", "bb1:5t.a", "", [ "$bb" ] ],
+    [ "pot1:VCC", "bb1:6t.a", "", [ "$bb" ] ]
+  ],
+  "dependencies": {}
+}
