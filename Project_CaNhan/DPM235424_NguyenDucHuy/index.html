@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Lock Pro - Dashboard Quản Lý</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .dashboard { background: #1e293b; width: 100%; max-width: 480px; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h1 { font-size: 20px; text-align: center; color: #38bdf8; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* BANNER THÔNG BÁO THAO TÁC WEB */
+        .toast-msg {
+            background: #334155;
+            color: #38bdf8;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border: 1px solid #0284c7;
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .card { background: #0f172a; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #334155; }
+        .card-title { font-size: 13px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; font-weight: 600; }
+        .status-box { font-size: 18px; font-weight: bold; color: #38bdf8; text-align: center; padding: 12px; background: #1e293b; border-radius: 8px; border: 1px solid #334155; }
+        .pin-setter { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
+        .pin-setter input[type="text"] { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 15px; text-align: center; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; color: white; font-size: 14px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-open { background-color: #059669; }
+        .btn-open:hover:not(:disabled) { background-color: #10b981; }
+        .btn-close { background-color: #2563eb; }
+        .btn-close:hover:not(:disabled) { background-color: #3b82f6; }
+        .btn-unlock { background-color: #dc2626; width: 100%; margin-top: 10px; }
+        .btn-unlock:hover:not(:disabled) { background-color: #ef4444; }
+        .btn-pin { background-color: #6366f1; }
+        .btn-pin:hover:not(:disabled) { background-color: #818cf8; }
+        .logs { background: #020617; border-radius: 8px; padding: 10px; height: 130px; overflow-y: auto; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #cbd5e1; border: 1px solid #334155; }
+        .log-item { margin-bottom: 4px; border-bottom: 1px solid #1e293b; padding-bottom: 2px; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 5px; background: #334155; color: #f8fafc; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>Smart Lock Dashboard</h1>
+
+    <!-- KHU VỰC HIỂN THỊ THÔNG BÁO THAO TÁC WEB -->
+    <div id="toast" class="toast-msg">Đang khởi tạo hệ thống...</div>
+
+    <div class="card">
+        <div class="card-title">Trạng Thái Cloud (Adafruit IO)</div>
+        <div class="status-box" id="statusText">Đang tải...</div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Điều Khiển Cửa</div>
+        <div class="btn-group">
+            <button class="btn-open" id="btnOpen" onclick="sendCommand('DOOR:1 | ALERT:0 | WRONG:0', 'Đang gửi lệnh MỞ CỬA...')">🔓 Mở Cửa (90°)</button>
+            <button class="btn-close" id="btnClose" onclick="sendCommand('DOOR:0 | ALERT:0 | WRONG:0', 'Đang gửi lệnh ĐÓNG CỬA...')">🔒 Đóng Cửa (0°)</button>
+        </div>
+        <button class="btn-unlock" id="btnReset" onclick="sendCommand('DOOR:0 | ALERT:0 | WRONG:0', 'Đang GỠ LOCK & TẮT CÒI HỤ...')">🚨 Gỡ Lock & Tắt Còi Hụ</button>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Đổi Mật Khẩu PIN Từ Xa</div>
+        <div class="pin-setter">
+            <input type="text" id="newPinInput" placeholder="PIN mới (4 số)" maxlength="4">
+            <button class="btn-pin" id="btnPin" onclick="setNewPin()">Lưu PIN</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Nhật Ký Dữ Liệu (Adafruit IO Log)</div>
+        <div class="logs" id="logBox">Đang kết nối Cloud...</div>
+    </div>
+</div>
+
+<script>
+    const AIO_USERNAME = "ndhuy412";
+    const AIO_KEY      = "aio_JJXf19jQrA9Le4FSzhHcqOJjpEuo";
+    const FEED_KEY     = "smart-lock-data";
+
+    const API_URL = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds/${FEED_KEY}/data`;
+
+    // Hàm hiển thị thông báo thao tác trên Dashboard
+    function showToast(message, isError = false) {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.style.display = 'block';
+        toast.style.borderColor = isError ? '#ef4444' : '#0284c7';
+        toast.style.color = isError ? '#fca5a5' : '#38bdf8';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+
+    async function fetchStatus() {
+        try {
+            const res = await fetch(`${API_URL}?limit=8`, {
+                headers: { "X-AIO-Key": AIO_KEY }
+            });
+            const data = await res.json();
+            
+            if (data && data.length > 0) {
+                const latest = data[0].value;
+                document.getElementById('statusText').innerText = latest;
+
+                const logBox = document.getElementById('logBox');
+                logBox.innerHTML = data.map(item => {
+                    const timeStr = new Date(item.created_at).toLocaleTimeString();
+                    return `<div class="log-item"><span class="badge">${timeStr}</span> ${item.value}</div>`;
+                }).join('');
+            }
+        } catch (err) {
+            console.error("Lỗi kết nối Adafruit IO:", err);
+            document.getElementById('statusText').innerText = "Lỗi kết nối API";
+        }
+    }
+
+    async function sendCommand(value, actionMsg = "Đang gửi lệnh...") {
+        showToast(actionMsg);
+        
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'X-AIO-Key': AIO_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ value: value })
+            });
+
+            if (res.ok) {
+                showToast("THÀNH CÔNG: Đã xuất lệnh lên Cloud!");
+                fetchStatus();
+            } else {
+                showToast("THẤT BẠI: Không thể gửi lệnh!", true);
+            }
+        } catch (err) {
+            console.error("Lỗi khi gửi lệnh lên Cloud!");
+            showToast("LỖI MẠNG: Kiểm tra kết nối Internet!", true);
+        }
+    }
+
+    async function setNewPin() {
+        const pinValue = document.getElementById('newPinInput').value.trim();
+        if (!pinValue || pinValue.length !== 4 || isNaN(pinValue)) {
+            showToast("VUI LÒNG NHẬP ĐÚNG 4 CHỮ SỐ!", true);
+            return;
+        }
+
+        const cmd = `SET_PIN:${pinValue}`;
+        await sendCommand(cmd, `Đang đổi mã PIN mới thành: ${pinValue}...`);
+        document.getElementById('newPinInput').value = "";
+    }
+
+    setInterval(fetchStatus, 1500);
+    fetchStatus();
+</script>
+
+</body>
+</html>
