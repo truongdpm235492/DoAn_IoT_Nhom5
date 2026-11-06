@@ -1,0 +1,641 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát Bãi Đỗ Xe Smart</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 18px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.1);
+        }
+
+        .status-box {
+            background: #eef2f7;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            line-height: 2;
+        }
+
+        .connected {
+            color: #198754;
+            font-weight: bold;
+        }
+
+        .disconnected {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .parking-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .spot {
+            padding: 30px 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,.1);
+            transition: background-color .2s;
+        }
+
+        .spot.empty {
+            background: #28a745;
+        }
+
+        .spot.occupied {
+            background: #dc3545;
+        }
+
+        .spot.unknown {
+            background: #6c757d;
+        }
+
+        .history-section {
+            margin-top: 35px;
+            text-align: left;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 8px;
+        }
+
+        .history-header h2 {
+            margin: 0;
+            color: #0d6efd;
+            font-size: 1.3rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        th, td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            overflow-wrap: anywhere;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #495057;
+        }
+
+        .badge-event {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: .85rem;
+        }
+
+        .event-in {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .event-out {
+            background: #f8d7da;
+            color: #842029;
+        }
+
+        .event-spot {
+            background: #cff4fc;
+            color: #055160;
+        }
+
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-clear:hover {
+            background: #5a6268;
+        }
+
+        .note {
+            font-size: .9rem;
+            color: #666;
+            margin-top: 12px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 12px;
+            }
+
+            .spot {
+                padding: 22px 6px;
+                font-size: 1rem;
+            }
+
+            th, td {
+                padding: 8px 4px;
+                font-size: .82rem;
+            }
+
+            .history-header h2 {
+                font-size: 1.05rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h1>GIÁM SÁT BÃI ĐỖ XE SMART</h1>
+
+    <div class="status-box">
+        Trạng thái kết nối:
+        <span id="mqtt-status" class="disconnected">
+            Đang kết nối...
+        </span>
+        <br>
+
+        Tổng lượt xe vào:
+        <strong id="entry-count"
+                style="color:#198754;font-size:1.1rem;">0</strong>
+        &nbsp;|&nbsp;
+
+        Tổng lượt xe ra:
+        <strong id="exit-count"
+                style="color:#dc3545;font-size:1.1rem;">0</strong>
+        &nbsp;|&nbsp;
+
+        Chỗ trống:
+        <strong id="empty-count"
+                style="color:#0d6efd;font-size:1.1rem;">--</strong>/4
+    </div>
+
+    <div class="parking-grid">
+        <div id="spot-1" class="spot unknown">Chỗ 1: ĐANG CHỜ</div>
+        <div id="spot-2" class="spot unknown">Chỗ 2: ĐANG CHỜ</div>
+        <div id="spot-3" class="spot unknown">Chỗ 3: ĐANG CHỜ</div>
+        <div id="spot-4" class="spot unknown">Chỗ 4: ĐANG CHỜ</div>
+    </div>
+
+    <p class="note" id="sensor-status">
+        Đang chờ dữ liệu cảm biến từ Adafruit IO...
+    </p>
+
+    <div class="history-section">
+        <div class="history-header">
+            <h2>Lịch Sử Xe Ra / Vào</h2>
+            <button class="btn-clear" id="clear-history-btn">
+                Xóa lịch sử
+            </button>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Thời Gian</th>
+                    <th>Sự Kiện</th>
+                    <th>Chi Tiết</th>
+                </tr>
+            </thead>
+
+            <tbody id="history-log">
+                <tr>
+                    <td colspan="3" style="color:#888;">
+                        Chưa có dữ liệu ra/vào...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+"use strict";
+
+// ==========================================
+// 1. CAU HINH ADAFRUIT IO
+// ==========================================
+
+const AIO_USER = "trgtran";
+
+// Nhập AIO Key mới của bạn tại đây.
+// Không chia sẻ key công khai.
+const AIO_KEY = "aio_jRge90vZu2oNPw8vlMOceF3NvXi1";
+
+const TOPIC_CHO = `${AIO_USER}/feeds/bai-do-xe`;
+const TOPIC_VAO = `${AIO_USER}/feeds/cong-vao`;
+const TOPIC_RA  = `${AIO_USER}/feeds/cong-ra`;
+
+// ==========================================
+// 2. KHOI TAO GIAO DIEN VA BO DEM
+// ==========================================
+
+const $ = id => document.getElementById(id);
+
+let entryCount = Number(
+    localStorage.getItem("parking_entry_count") || 0
+);
+
+let exitCount = Number(
+    localStorage.getItem("parking_exit_count") || 0
+);
+
+let lastEntryEvent =
+    localStorage.getItem("parking_last_entry_event") || "";
+
+let lastExitEvent =
+    localStorage.getItem("parking_last_exit_event") || "";
+
+let oldSpotState = [null, null, null, null];
+
+$("entry-count").textContent = entryCount;
+$("exit-count").textContent = exitCount;
+
+function setMqttStatus(text, connected) {
+    $("mqtt-status").textContent = text;
+    $("mqtt-status").className =
+        connected ? "connected" : "disconnected";
+}
+
+// ==========================================
+// 3. KIEM TRA THU VIEN MQTT
+// ==========================================
+
+if (typeof Paho === "undefined") {
+    setMqttStatus("Không tải được thư viện MQTT", false);
+    console.error(
+        "Không tải được Paho MQTT. Hãy kiểm tra kết nối Internet."
+    );
+} else if (
+    !AIO_KEY ||
+    AIO_KEY === "DAN_AIO_KEY_MOI_VAO_DAY"
+) {
+    setMqttStatus("Chưa cấu hình AIO Key", false);
+    console.error("Bạn cần nhập AIO Key hợp lệ.");
+} else {
+
+// ==========================================
+// 4. KHOI TAO MQTT CLIENT
+// ==========================================
+
+    const clientId =
+        "WebMonitor_" + Math.random().toString(16).slice(2, 12);
+
+    const client = new Paho.MQTT.Client(
+        "io.adafruit.com",
+        443,
+        "/mqtt",
+        clientId
+    );
+
+    client.onConnectionLost = onConnectionLost;
+    client.onMessageArrived = onMessageArrived;
+
+    // ==========================================
+    // 5. KET NOI MQTT
+    // ==========================================
+
+    function connectMQTT() {
+        setMqttStatus("Đang kết nối MQTT...", false);
+
+        client.connect({
+            useSSL: true,
+            timeout: 10,
+            keepAliveInterval: 30,
+            cleanSession: true,
+            userName: AIO_USER,
+            password: AIO_KEY,
+
+            onSuccess: onConnect,
+
+            onFailure: function(error) {
+                console.error("Lỗi kết nối MQTT:", error);
+
+                const reason = error && error.errorMessage
+                    ? error.errorMessage
+                    : "Không rõ nguyên nhân";
+
+                setMqttStatus("Lỗi MQTT: " + reason, false);
+            }
+        });
+    }
+
+    function onConnect() {
+        setMqttStatus("Đã kết nối MQTT", true);
+        console.log("MQTT kết nối thành công.");
+
+        subscribeFeed(TOPIC_CHO, true);
+        subscribeFeed(TOPIC_VAO, false);
+        subscribeFeed(TOPIC_RA, false);
+    }
+
+    function subscribeFeed(topic, requestLatest) {
+        client.subscribe(topic, {
+            qos: 0,
+
+            onSuccess: function() {
+                console.log("Đã đăng ký feed:", topic);
+
+                // Yêu cầu Adafruit IO gửi giá trị mới nhất
+                // của feed cảm biến sau khi đăng ký thành công.
+                if (requestLatest) {
+                    const getMessage = new Paho.MQTT.Message("");
+                    getMessage.destinationName = topic + "/get";
+                    client.send(getMessage);
+
+                    console.log(
+                        "Đã yêu cầu dữ liệu mới nhất:",
+                        topic
+                    );
+                }
+            },
+
+            onFailure: function(error) {
+                console.error(
+                    "Không đăng ký được feed:",
+                    topic,
+                    error
+                );
+            }
+        });
+    }
+
+    function onConnectionLost(responseObject) {
+        if (responseObject && responseObject.errorCode !== 0) {
+            console.error("Mất kết nối MQTT:", responseObject);
+            setMqttStatus("Mất kết nối MQTT", false);
+        }
+    }
+
+    // ==========================================
+    // 6. NHAN VA XU LY DU LIEU MQTT
+    // ==========================================
+
+    function onMessageArrived(message) {
+        const topic = message.destinationName;
+        const payload = message.payloadString.trim();
+
+        console.log("MQTT nhận:", topic, payload);
+
+        // Feed cam bien bai do xe.
+        if (
+            topic === TOPIC_CHO &&
+            payload.startsWith("CHO:")
+        ) {
+            updateParkingSlots(payload);
+            return;
+        }
+
+        // Su kien xe vao.
+        if (
+            topic === TOPIC_VAO &&
+            payload.startsWith("VAO:MO:")
+        ) {
+            const eventId = payload.substring("VAO:MO:".length);
+
+            if (eventId && eventId !== lastEntryEvent) {
+                lastEntryEvent = eventId;
+                entryCount++;
+
+                localStorage.setItem(
+                    "parking_entry_count",
+                    String(entryCount)
+                );
+
+                localStorage.setItem(
+                    "parking_last_entry_event",
+                    lastEntryEvent
+                );
+
+                $("entry-count").textContent = entryCount;
+
+                addHistoryLog(
+                    "Cổng Vào",
+                    "Quét thẻ thành công; chờ cảm biến xác nhận vị trí đỗ",
+                    "event-in"
+                );
+            }
+
+            return;
+        }
+
+        // Su kien xe ra.
+        if (
+            topic === TOPIC_RA &&
+            payload.startsWith("RA:MO:")
+        ) {
+            const eventId = payload.substring("RA:MO:".length);
+
+            if (eventId && eventId !== lastExitEvent) {
+                lastExitEvent = eventId;
+                exitCount++;
+
+                localStorage.setItem(
+                    "parking_exit_count",
+                    String(exitCount)
+                );
+
+                localStorage.setItem(
+                    "parking_last_exit_event",
+                    lastExitEvent
+                );
+
+                $("exit-count").textContent = exitCount;
+
+                addHistoryLog(
+                    "Cổng Ra",
+                    "Quét thẻ ra thành công",
+                    "event-out"
+                );
+            }
+        }
+    }
+
+    // ==========================================
+    // 7. CAP NHAT 4 VI TRI DO XE
+    // ==========================================
+
+    function updateParkingSlots(dataString) {
+        const stateString = dataString.slice(4).trim();
+
+        if (!/^[01]{4}$/.test(stateString)) {
+            console.warn(
+                "Dữ liệu vị trí không hợp lệ:",
+                dataString
+            );
+
+            $("sensor-status").textContent =
+                "Dữ liệu cảm biến không đúng định dạng.";
+
+            return;
+        }
+
+        const newStates = stateString.split("");
+        let emptyCount = 0;
+
+        newStates.forEach(function(state, index) {
+            const spotNumber = index + 1;
+            const spotElement = $("spot-" + spotNumber);
+
+            // Them lich su neu trang thai thay doi.
+            if (
+                oldSpotState[index] === "0" &&
+                state === "1"
+            ) {
+                addHistoryLog(
+                    `Chỗ ${spotNumber}`,
+                    `Cảm biến xác nhận có xe tại vị trí ${spotNumber}`,
+                    "event-spot"
+                );
+            } else if (
+                oldSpotState[index] === "1" &&
+                state === "0"
+            ) {
+                addHistoryLog(
+                    `Chỗ ${spotNumber}`,
+                    `Cảm biến xác nhận vị trí ${spotNumber} đã trống`,
+                    "event-spot"
+                );
+            }
+
+            // 0 = trong; 1 = co xe.
+            if (state === "0") {
+                spotElement.className = "spot empty";
+                spotElement.textContent =
+                    `Chỗ ${spotNumber}: TRỐNG`;
+
+                emptyCount++;
+            } else {
+                spotElement.className = "spot occupied";
+                spotElement.textContent =
+                    `Chỗ ${spotNumber}: CÓ XE`;
+            }
+        });
+
+        oldSpotState = [...newStates];
+
+        $("empty-count").textContent = emptyCount;
+        $("sensor-status").textContent =
+            "Đã nhận dữ liệu cảm biến: " + dataString;
+
+        console.log(
+            "Đã cập nhật bãi xe. Chỗ trống:",
+            emptyCount
+        );
+    }
+
+    // ==========================================
+    // 8. THEM SU KIEN VAO LICH SU
+    // ==========================================
+
+    function addHistoryLog(eventTitle, detail, badgeClass) {
+        const logTable = $("history-log");
+
+        // Xoa dong thong bao neu chua co lich su.
+        if (
+            logTable.rows.length > 0 &&
+            logTable.rows[0].cells.length === 1
+        ) {
+            logTable.innerHTML = "";
+        }
+
+        const newRow = logTable.insertRow(0);
+
+        const timeCell = newRow.insertCell(0);
+        const timeStrong = document.createElement("strong");
+
+        timeStrong.textContent =
+            new Date().toLocaleTimeString("vi-VN");
+
+        timeCell.appendChild(timeStrong);
+
+        const eventCell = newRow.insertCell(1);
+        const badge = document.createElement("span");
+
+        badge.className = "badge-event " + badgeClass;
+        badge.textContent = eventTitle;
+
+        eventCell.appendChild(badge);
+
+        const detailCell = newRow.insertCell(2);
+        detailCell.textContent = detail;
+
+        // Gioi han so dong hien thi.
+        while (logTable.rows.length > 100) {
+            logTable.deleteRow(logTable.rows.length - 1);
+        }
+    }
+
+    // ==========================================
+    // 9. XOA LICH SU HIEN THI
+    // ==========================================
+
+    function clearHistory() {
+        $("history-log").innerHTML = `
+            <tr>
+                <td colspan="3" style="color:#888;">
+                    Chưa có dữ liệu ra/vào...
+                </td>
+            </tr>
+        `;
+    }
+
+    $("clear-history-btn").addEventListener(
+        "click",
+        clearHistory
+    );
+
+    // ==========================================
+    // 10. BAT DAU KET NOI
+    // ==========================================
+
+    connectMQTT();
+}
+</script>
+</body>
+</html>

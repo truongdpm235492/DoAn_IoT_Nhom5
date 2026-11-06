@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "author": "Tran Minh Truong",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-breadboard", "id": "bb1", "top": 6.6, "left": 194.8, "attrs": {} },
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": -9.6, "left": 4.84, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo_in", "top": 132.4, "left": 960, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo_out", "top": -40.4, "left": 950.4, "attrs": {} },
+    {
+      "type": "wokwi-led",
+      "id": "led_g",
+      "top": 265.2,
+      "left": 656.6,
+      "attrs": { "color": "limegreen" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_r",
+      "top": 265.2,
+      "left": 714.2,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -109,
+      "left": 336,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": -109,
+      "left": 489.6,
+      "attrs": { "color": "green", "xray": "1" }
+    }
+  ],
+  "connections": [
+    [ "bb1:bn.38", "led_g:C", "black", [ "v0" ] ],
+    [ "bb1:bn.43", "led_r:C", "black", [ "v0" ] ],
+    [ "esp:5V", "bb1:bp.1", "red", [ "h-19.05", "v38.4", "h182.4", "v-48" ] ],
+    [ "esp:2", "bb1:49b.i", "green", [ "h0" ] ],
+    [ "bb1:49b.j", "led_g:A", "green", [ "h9.6", "v144" ] ],
+    [ "esp:4", "bb1:56b.h", "green", [ "h9.6", "v9.6" ] ],
+    [ "bb1:56b.i", "led_r:A", "green", [ "v0" ] ],
+    [ "esp:17", "bb1:30b.g", "green", [ "h19.2", "v19.2" ] ],
+    [ "bb1:30b.f", "bb1:30t.e", "green", [ "v0" ] ],
+    [ "esp:5", "bb1:9t.e", "green", [ "h0" ] ],
+    [ "esp:19", "bb1:63t.c", "orange", [ "v-9.6", "h403.2", "v9.6", "h211.2", "v-9.6" ] ],
+    [ "bb1:63t.d", "servo_out:PWM", "orange", [ "h57.6", "v-57.8" ] ],
+    [ "bb1:62t.e", "servo_in:PWM", "orange", [ "h67.2", "v105.4" ] ],
+    [ "esp:18", "bb1:62t.d", "orange", [ "v-9.6", "h403.2", "v9.6", "h220.8", "v-9.6" ] ],
+    [ "servo_out:V+", "bb1:tp.50", "red", [ "h0" ] ],
+    [ "servo_out:GND", "bb1:tn.49", "black", [ "h-96", "v-28.8", "h-76.8" ] ],
+    [
+      "servo_in:V+",
+      "bb1:bp.50",
+      "red",
+      [ "h-48", "v-76.7", "h278.4", "v172.8", "h-412.8", "v-105.6", "h20" ]
+    ],
+    [ "servo_in:GND", "bb1:bn.50", "black", [ "h-38.4", "v-57.6", "h249.6", "v144", "h-364.8" ] ],
+    [ "esp:GND", "bb1:tn.1", "black", [] ],
+    [ "esp:25", "btn1:1.l", "green", [ "v0", "h-28.65", "v-144" ] ],
+    [ "btn1:2.l", "bb1:tn.10", "black", [] ],
+    [ "esp:26", "btn2:1.l", "green", [ "h-47.85", "v-249.6", "h518.4" ] ],
+    [ "btn2:2.l", "bb1:tn.23", "black", [] ]
+  ],
+  "dependencies": {}
+}
